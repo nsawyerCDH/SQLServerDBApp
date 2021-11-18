@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.SqlClient;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
@@ -69,9 +70,10 @@ namespace SQLServerDBApp
         {
             // Open File Dialog box to select only files with .bak or All files filter
             OpenFileDialog openFileDialog = new OpenFileDialog();
-            openFileDialog.Multiselect = false;
+            openFileDialog.Multiselect = true;
             openFileDialog.Filter = "Text files (*.bak)|*.bak|All files (*.*)|*.*";
             openFileDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyComputer);
+            openFileDialog.Title = "Select all database backup files you wish to restore";
             List<string> dbList = new List<string>();
 
             if (openFileDialog.ShowDialog() == true)
@@ -104,65 +106,63 @@ namespace SQLServerDBApp
                 {
                     connection.Open();
 
-                    if (dbList.Count > 0)
+                    for (int i = 0; i < listDatabases.Items.Count; i++)
                     {
-                        for (int i = 0; i < listDatabases.Items.Count; i++)
+                        if (((BoolStringClass)listDatabases.Items[i]).isChecked)
                         {
-                            int counter = 0;
-                            if (((BoolStringClass)listDatabases.Items[i]).isChecked)
+                            string dbName = ((BoolStringClass)listDatabases.Items[i]).TheText;
+                            string dbFile = dbList.FirstOrDefault(x => x.ToLower().Contains(dbName.ToLower()));
+
+                            if (dbFile != null)
                             {
-                                string dbName = ((BoolStringClass)listDatabases.Items[i]).TheText;
-                                string dbFile = dbList[counter];
+                                StatusTextbox.Text = "Restoring " + dbName + "...";
 
-                                if (dbFile.Contains(dbName))
+                                flag = true;
+
+                                // Altering database to set single user
+                                var qry = String.Format("alter database [{0}] set single_user with rollback immediate", dbName);
+                                using (var command = new SqlCommand(qry, connection) { CommandTimeout = 1000 })
                                 {
-                                    flag = true;
-                                    counter++;
-
-                                    // Altering database to set single user
-                                    var qry = String.Format("alter database [{0}] set single_user with rollback immediate", dbName);
-                                    using (var command = new SqlCommand(qry, connection))
-                                    {
-                                        command.ExecuteNonQuery();
-                                    }
-
-                                    // Restore SQL Server query
-                                    var query = String.Format("DECLARE @SQLStatement VARCHAR(2000) SET @SQLStatement = '{0}' RESTORE DATABASE [{1}] FROM DISK = @SQLStatement WITH REPLACE", dbFile, dbName);
-
-                                    using (var command = new SqlCommand(query, connection))
-                                    {
-                                        command.ExecuteNonQuery();
-                                    }
-
-                                    // Changing database back to multi user
-                                    var qry2 = String.Format("ALTER DATABASE [{0}] SET MULTI_USER", dbName);
-                                    using (var command = new SqlCommand(qry2, connection))
-                                    {
-                                        command.ExecuteNonQuery();
-                                    }
-
-                                    value += 1;
-
-                                    /*Update the Value of the ProgressBar:
-                                        1) Pass the "updatePbDelegate" delegate
-                                           that points to the ProgressBar1.SetValue method
-                                        2) Set the DispatcherPriority to "Background"
-                                        3) Pass an Object() Array containing the property
-                                           to update (ProgressBar.ValueProperty) and the new value */
-                                    Dispatcher.Invoke(updatePbDelegate,
-                                        System.Windows.Threading.DispatcherPriority.Background,
-                                        new object[] { ProgressBar.ValueProperty, value });
+                                    command.ExecuteNonQuery();
                                 }
-                                else
+
+                                // Restore SQL Server query
+                                var query = String.Format("DECLARE @SQLStatement VARCHAR(2000) SET @SQLStatement = '{0}' RESTORE DATABASE [{1}] FROM DISK = @SQLStatement WITH REPLACE", dbFile, dbName);
+
+                                using (var command = new SqlCommand(query, connection) { CommandTimeout = 1000})
                                 {
-                                    flag = false;
-                                    MessageBox.Show("Irrelevant Database file selected!!");
+                                    command.ExecuteNonQuery();
                                 }
+
+                                // Changing database back to multi user
+                                var qry2 = String.Format("ALTER DATABASE [{0}] SET MULTI_USER", dbName);
+                                using (var command = new SqlCommand(qry2, connection) { CommandTimeout = 1000 })
+                                {
+                                    command.ExecuteNonQuery();
+                                }
+
+                                value += 1;
+
+                                /*Update the Value of the ProgressBar:
+                                    1) Pass the "updatePbDelegate" delegate
+                                       that points to the ProgressBar1.SetValue method
+                                    2) Set the DispatcherPriority to "Background"
+                                    3) Pass an Object() Array containing the property
+                                       to update (ProgressBar.ValueProperty) and the new value */
+                                Dispatcher.Invoke(updatePbDelegate,
+                                    System.Windows.Threading.DispatcherPriority.Background,
+                                    new object[] { ProgressBar.ValueProperty, value });
+
+                                StatusTextbox.Text = "";
+                            } else
+                            {
+                                flag = false;
+                                MessageBox.Show("Irrelevant Database file selected!!");
                             }
                         }
-
-                        connection.Close();
                     }
+
+                    connection.Close();
                 }
 
                 if (flag)
@@ -233,8 +233,7 @@ namespace SQLServerDBApp
                                     command.CommandTimeout = 0;
                                     command.ExecuteNonQuery();
                                 }
-                            }
-                            catch (Exception ex)
+                            } catch (Exception ex)
                             {
                                 MessageBox.Show(ex.Message);
                             }
@@ -280,8 +279,7 @@ namespace SQLServerDBApp
                     ((BoolStringClass)listDatabases.Items[i]).isChecked = true;
                 }
                 listDatabases.Items.Refresh();
-            }
-            else
+            } else
             {
                 for (int i = 0; i < listDatabases.Items.Count; i++)
                 {
@@ -299,8 +297,7 @@ namespace SQLServerDBApp
                 btnRestore.IsEnabled = true;
                 btnBackup.IsEnabled = false;
                 listDatabases.SelectionMode = System.Windows.Controls.SelectionMode.Single;
-            }
-            else
+            } else
             {
                 btnRestore.IsEnabled = false;
                 btnBackup.IsEnabled = true;
