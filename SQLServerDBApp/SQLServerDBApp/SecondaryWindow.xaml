@@ -23,7 +23,9 @@
         <ProgressBar x:Name="progressBar" IsIndeterminate="False" HorizontalAlignment="Left" Height="26" Margin="33,346,0,0" Value="0" VerticalAlignment="Top" Width="526"/>
         <CheckBox x:Name="chkSelectUnSelect" Click="chkSelectUnSelect_Click" Content="Select / Un-Select All" HorizontalAlignment="Left" Margin="379,57,0,0" VerticalAlignment="Top" Width="180"/>
         <CheckBox x:Name="chkRestoreMode" Content="Restore Mode" HorizontalAlignment="Left" Margin="204,306,0,0" VerticalAlignment="Top" Width="180" Click="chkRestoreMode_Click"/>
-        <Label x:Name="lblProgressMsg" Content="" HorizontalAlignment="Left" Margin="33,377,0,0" VerticalAlignment="Top" RenderTransformOrigin="0.085,-0.592" Width="86"/>
+        <Label x:Name="lblProgressMsg" HorizontalAlignment="Left" Margin="33,377,0,0" VerticalAlignment="Top" RenderTransformOrigin="0.085,-0.592" Width="526">
+            <TextBox x:Name="StatusTextbox" Height="23" TextWrapping="NoWrap" Width="516"/>
+        </Label>
         <Label x:Name="lblCounterMsg" Content="" HorizontalAlignment="Left" Margin="516,377,0,0" VerticalAlignment="Top" RenderTransformOrigin="0.56,-0.412" />
     </Grid>
 </Window>
